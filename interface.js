@@ -75,9 +75,9 @@ $("#sendVideoForm").submit(function(e){
         success: function(data){ 
             console.log(data);
             console.log('success');
-        }
+        },
         error: function (error) {
-            alert('Server not run or error on server. Write to alx.grents@gmail.com')
+            alert('Server not run or error on server. Write to alx.grents@gmail.com');
         }
     });
     console.log(Object.fromEntries(body))
