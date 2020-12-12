@@ -17,7 +17,46 @@ $( "#video-select" ).change(function() {
 
 $("#mask-file").change(function(){showUploadImage(this, "#mask-view")});
     
-    
+let STATE = {UPLOAD: 1, PROGRESS: 2, DOWNLOAD: 3};
+
+class InterfaceState {
+    constructor(state = null) {
+        this.uploadSection = document.getElementById('sendVideoForm');
+        this.progressSection = document.getElementById('detectionProccess');
+        this.downloadSection = document.getElementById('downloadResult');
+        if (state) this.setState(state);
+        this.progressUpdateTimerId = null;
+    }
+    setState(state, processId = null)
+    {
+        this.uploadSection.hidden = true;
+        this.progressSection.hidden = true;
+        this.downloadSection.hidden = true;
+
+        if (state===STATE.UPLOAD) {
+            this.uploadSection.hidden = false;
+            clearTimeout(this.progressUpdateTimerId);
+        }
+
+        else if (state === STATE.PROGRESS) {
+            this.progressSection.hidden = false;
+            if (processId && this.progressUpdateTimerId)
+            {
+                this.progressUpdateTimerId = setInterval(checkProcess, 1000, processId)
+            }
+        }
+
+        else if (state === STATE.DOWNLOAD) {
+            this.downloadSection.hidden = false;
+            clearTimeout(this.progressUpdateTimerId);
+        }
+    }
+}
+
+let interfaceState = new InterfaceState(STATE.UPLOAD);
+document.getElementById("to-upload-state").onclick = () => interfaceState.setState(STATE.UPLOAD);
+
+
 function setVideoFileUrl(url, type) {
     if (url && type) {
         $("#video-view").show();
@@ -133,18 +172,73 @@ function getFormData(){
 
 globalThis.serverLink = location.href;
 
-
-
-async function updateProgressbar(){
+async function checkProcess(processId)
+{
     $.ajax({
-        url: globalThis.progressLink,
-        success: function(data){
-            $("#detectionProgressbar").css("width", data.currentFrame/data.frameCount);
-            $("#detectionProgressbar").text(Math.round(data.currentFrame/data.frameCount, 2));
+        url: globalThis.progressLink + '/' + processId,
+        success: function (data) {
+            if (data.status == 'run')
+            {
+                interfaceState.setState(STATE.PROGRESS, processId)
+            }
+            else if (data.status == 'end')
+            {
+                interfaceState.setState(STATE.DOWNLOAD);
+
+                setDownloadLinks(data)
+            }
+            else if (data.status == 'start')
+            {
+                interfaceState.setState(STATE.PROGRESS)
+            }
+        },
+        error: function (error) {
+            interfaceState.setState(STATE.UPLOAD)
+
         }
     })
+}
 
-    $("#detectionProgressbar")
+function updateProgressbar(data){
+    console.log(data)
+    $("#detectionProgressbar").attr("aria-valuenow", data.currentFrame);
+    $("#detectionProgressbar").attr("aria-valuemax", data.frameCount);
+    $("#detectionProgressbar").css("width", 100* data.currentFrame/data.frameCount + '%');
+    $("#detectionProgressbar").text(Math.round(100* data.currentFrame/data.frameCount, 2) + '%');
+}
+
+function setDownloadLinks(data) {
+    console.log(data)
+    if (data.mp4FileName && data.webmFileName){
+        let mp4Link = globalThis.files + '/' + data.mp4FileName;
+        let webmLink = globalThis.files + '/' + data.webmFileName;
+        $("#video-download>video").attr('src', webmLink);
+
+        $("#download-mp4-file").attr('href', mp4Link);
+        $("#download-webm-file").attr('href', webmLink);
+
+        $("#video-download>video").hidden = false;
+        $("#download-mp4-file").hidden = false;
+        $("#download-webm-file").hidden = false;
+
+    }
+    else {
+        $("#video-download>video").hidden = true;
+        $("#download-video-file").hidden = true;
+    }
+
+    if (data.jsonFileName)
+    {
+        let jsonLink = globalThis.files + '/' + data.jsonFileName;
+        $("#download-json-file").attr('href', jsonLink);
+        $("#download-json-file").hidden = false;
+    }
+    else {
+        $("#download-json-file").hidden = true;
+    }
+
+    $("#url-for-result").text('20201213003800');
+
 }
 
 function setUrls(url, params)
@@ -152,6 +246,7 @@ function setUrls(url, params)
     globalThis.serverHost = url;
     globalThis.serverLink = globalThis.serverHost + params.detect;
     globalThis.progressLink = globalThis.serverHost + params.result;
+    globalThis.files = globalThis.serverHost + '/static'
 }
 
 setUrls("http://127.0.0.1:5000", {detect:'/detect', result:'/result'});
