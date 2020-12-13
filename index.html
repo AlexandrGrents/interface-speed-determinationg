@@ -27,7 +27,7 @@
       </li>
     </ul>
 
-      <button class="btn btn-info my-2 my-sm-0">Русский</button>
+      <button class="btn btn-info my-2 my-sm-0" hidden>Русский</button>
 
   </div>
 </nav>
@@ -122,6 +122,7 @@
         <section id="detectionProccess" class="row" style="background-color:#dedede" >
             <div class="col-12">
                 <b>Wait detection...</b>
+                <p class="url-for-result">Url for result: <a href=""></a></p>
                 <div class="progress">
                   <div class="progress-bar bg-info" id="detectionProgressbar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="200">0%</div>
                 </div>
@@ -135,7 +136,7 @@
         </div>
         <div class="col-4 d-flex flex-column align-items-start">
             <hr>
-            <span id="url-for-result">Url for result: <a href=""></a></span>
+            <p class="url-for-result">Url for result: <a href=""></a></p>
             <hr>
             <a href="" id="download-mp4-file" download class="btn btn-info m-1"> Скачать видео mp4</a>
             <a href="" id="download-webm-file" download class="btn btn-info m-1"> Скачать видео webm</a>
@@ -144,8 +145,6 @@
             <button class="btn btn-info" id="to-upload-state">To start</button>
         </div>
     </section>
-
-
 
 </div>
 

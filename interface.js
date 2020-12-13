@@ -27,7 +27,7 @@ class InterfaceState {
         if (state) this.setState(state);
         this.progressUpdateTimerId = null;
     }
-    setState(state, processId = null)
+    setState(state, processId)
     {
         this.uploadSection.hidden = true;
         this.progressSection.hidden = true;
@@ -40,10 +40,6 @@ class InterfaceState {
 
         else if (state === STATE.PROGRESS) {
             this.progressSection.hidden = false;
-            if (processId && this.progressUpdateTimerId)
-            {
-                this.progressUpdateTimerId = setInterval(checkProcess, 1000, processId)
-            }
         }
 
         else if (state === STATE.DOWNLOAD) {
@@ -114,6 +110,7 @@ $("#sendVideoForm").submit(function(e){
         success: function(data){ 
             console.log(data);
             console.log('success');
+            setTimeout(() => checkProcess(data.id),2000);
         },
         error: function (error) {
             alert('Server not run or error on server. Write to alx.grents@gmail.com');
@@ -174,12 +171,19 @@ globalThis.serverLink = location.href;
 
 async function checkProcess(processId)
 {
+    console.log('check on', processId)
     $.ajax({
         url: globalThis.progressLink + '/' + processId,
         success: function (data) {
             if (data.status == 'run')
             {
+                updateProgressbar(data)
                 interfaceState.setState(STATE.PROGRESS, processId)
+                if (interfaceState.progressUpdateTimerId === null)
+                {
+                    interfaceState.progressUpdateTimerId = setInterval(checkProcess, 5000, processId)
+                }
+
             }
             else if (data.status == 'end')
             {
@@ -209,9 +213,9 @@ function updateProgressbar(data){
 
 function setDownloadLinks(data) {
     console.log(data)
-    if (data.mp4FileName && data.webmFileName){
-        let mp4Link = globalThis.files + '/' + data.mp4FileName;
-        let webmLink = globalThis.files + '/' + data.webmFileName;
+    if (data.mp4 && data.webm){
+        let mp4Link = globalThis.files + '/' + data.mp4;
+        let webmLink = globalThis.files + '/' + data.webm;
         $("#video-download>video").attr('src', webmLink);
 
         $("#download-mp4-file").attr('href', mp4Link);
@@ -227,9 +231,9 @@ function setDownloadLinks(data) {
         $("#download-video-file").hidden = true;
     }
 
-    if (data.jsonFileName)
+    if (data.json)
     {
-        let jsonLink = globalThis.files + '/' + data.jsonFileName;
+        let jsonLink = globalThis.files + '/' + data.json;
         $("#download-json-file").attr('href', jsonLink);
         $("#download-json-file").hidden = false;
     }
@@ -237,8 +241,17 @@ function setDownloadLinks(data) {
         $("#download-json-file").hidden = true;
     }
 
-    $("#url-for-result").text('20201213003800');
+    setResultLink(data.id)
 
+}
+
+function setResultLink(processId)
+{
+    let processLink = new URL(location.href);
+    processLink.searchParams.set('processId', processId)
+
+    $(".url-for-result>a").text(processLink);
+    $(".url-for-result>a").attr('href', processLink)
 }
 
 function setUrls(url, params)
@@ -246,7 +259,32 @@ function setUrls(url, params)
     globalThis.serverHost = url;
     globalThis.serverLink = globalThis.serverHost + params.detect;
     globalThis.progressLink = globalThis.serverHost + params.result;
-    globalThis.files = globalThis.serverHost + '/static'
+    globalThis.files = globalThis.serverHost + '/file'
 }
 
-setUrls("http://127.0.0.1:5000", {detect:'/detect', result:'/result'});
+
+
+async function setUrlsFromProxy()
+{
+    $.ajax({
+        url: "https://speed-detection-proxy.herokuapp.com/server",
+        success: function (data)
+        {
+            setUrls(data.host, data)
+        }
+    })
+}
+
+async function start(){
+    let url = new URL(location.href);
+    let processId = url.searchParams.get('processId');
+    setUrlsFromProxy();
+    if (processId)
+    {
+        console.log('processId', processId)
+        setTimeout(() => checkProcess(processId), 1000);
+    }
+
+
+}
+document.addEventListener("DOMContentLoaded", start);
